@@ -2,11 +2,41 @@ import { useState } from 'react'
 
 export default function Contact() {
   const [submitted, setSubmitted] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState(null)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // In production, this would send data to a backend endpoint
-    setSubmitted(true)
+    setSending(true)
+    setError(null)
+
+    const form = e.target
+    const data = {
+      name: form.name.value,
+      email: form.email.value,
+      company: form.company.value,
+      service_interest: form.service.value,
+      message: form.message.value,
+    }
+
+    try {
+      const res = await fetch('http://localhost:3001/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'Something went wrong')
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSending(false)
+    }
   }
 
   if (submitted) {
@@ -84,8 +114,19 @@ export default function Contact() {
                 ></textarea>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '1rem' }}>
-                Send Message →
+              {error && (
+                <div style={{ padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', marginBottom: '1rem', color: '#991b1b', fontSize: '0.9rem' }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={sending}
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: '1rem', opacity: sending ? 0.7 : 1 }}
+              >
+                {sending ? 'Sending...' : 'Send Message →'}
               </button>
             </form>
 
@@ -100,7 +141,7 @@ export default function Contact() {
             }}>
               <div>
                 <h4 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>📧 Email</h4>
-                <p style={{ color: 'var(--text-light)' }}>hello@aphelion-ai.com</p>
+                <p style={{ color: 'var(--text-light)' }}>aphelion-ai-34ef2666@ctomail.io</p>
               </div>
               <div>
                 <h4 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>📞 Phone</h4>
