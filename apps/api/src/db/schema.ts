@@ -2,7 +2,6 @@ import Database from 'better-sqlite3';
 import { getDb } from './connection.js';
 
 const SCHEMA = `
--- Users table
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT UNIQUE NOT NULL,
@@ -14,7 +13,6 @@ CREATE TABLE IF NOT EXISTS users (
   push_token TEXT
 );
 
--- Birth charts (one per user)
 CREATE TABLE IF NOT EXISTS charts (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -32,7 +30,6 @@ CREATE TABLE IF NOT EXISTS charts (
 
 CREATE INDEX IF NOT EXISTS idx_charts_user_id ON charts(user_id);
 
--- Subscriptions
 CREATE TABLE IF NOT EXISTS subscriptions (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -48,7 +45,6 @@ CREATE TABLE IF NOT EXISTS subscriptions (
 
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 
--- One-time purchases
 CREATE TABLE IF NOT EXISTS purchases (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -62,7 +58,6 @@ CREATE TABLE IF NOT EXISTS purchases (
 
 CREATE INDEX IF NOT EXISTS idx_purchases_user_id ON purchases(user_id);
 
--- User preferences
 CREATE TABLE IF NOT EXISTS preferences (
   user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   daily_horoscope_enabled INTEGER NOT NULL DEFAULT 1,
@@ -73,7 +68,6 @@ CREATE TABLE IF NOT EXISTS preferences (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Horoscope history
 CREATE TABLE IF NOT EXISTS horoscope_history (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -88,7 +82,6 @@ CREATE TABLE IF NOT EXISTS horoscope_history (
 CREATE INDEX IF NOT EXISTS idx_horoscope_history_user_date ON horoscope_history(user_id, date);
 CREATE INDEX IF NOT EXISTS idx_horoscope_history_user_type ON horoscope_history(user_id, type);
 
--- Transit calendar events
 CREATE TABLE IF NOT EXISTS transit_events (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -107,20 +100,16 @@ CREATE INDEX IF NOT EXISTS idx_transit_events_user_date ON transit_events(user_i
 export function runMigrations(): void {
   const db = getDb();
   
-  // Run schema in a transaction
   db.transaction(() => {
-    // Split by semicolons and execute each statement
     const statements = SCHEMA
       .split(';')
       .map(s => s.trim())
       .filter(s => s.length > 0 && !s.startsWith('--'));
-    
     for (const stmt of statements) {
       db.exec(stmt + ';');
     }
   })();
 
-  // Track migration version
   db.exec(`
     CREATE TABLE IF NOT EXISTS _migrations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,8 +125,8 @@ export function runMigrations(): void {
   }
 }
 
-// Run directly
-if (process.argv[1]?.includes('migrate')) {
+// Run directly when invoked as script
+if (process.argv[1]?.endsWith('migrate.ts') || process.argv[1]?.endsWith('migrate.js')) {
   runMigrations();
   console.log('Migrations complete.');
   process.exit(0);

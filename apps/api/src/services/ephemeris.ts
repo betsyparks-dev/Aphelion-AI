@@ -1,24 +1,15 @@
 import swisseph from 'swisseph';
-import path from 'path';
-import { config } from '../config.js';
 import fs from 'fs';
+import { config } from '../config.js';
 
-// Initialize Swiss Ephemeris
 let ephemerisReady = false;
 
 export function initEphemeris(): void {
   const ephePath = config.ephePath;
-  
-  // Create ephe directory if it doesn't exist
   if (!fs.existsSync(ephePath)) {
     fs.mkdirSync(ephePath, { recursive: true });
   }
-  
-  // Set ephemeris path
   swisseph.swe_set_ephe_path(ephePath);
-  
-  // Try to download ephemeris files if needed (jpl files for swe)
-  // For now, use the built-in Moshier ephemeris as fallback
   ephemerisReady = true;
 }
 
@@ -43,118 +34,73 @@ export interface ChartData {
   midheaven: number;
 }
 
-// Planet indices for Swiss Ephemeris
 export enum Planet {
-  SUN = 0,
-  MOON = 1,
-  MERCURY = 2,
-  VENUS = 3,
-  MARS = 4,
-  JUPITER = 5,
-  SATURN = 6,
-  URANUS = 7,
-  NEPTUNE = 8,
-  PLUTO = 9,
-  NORTH_NODE = 10,
-  CHIRON = 11,
+  SUN = 0, MOON = 1, MERCURY = 2, VENUS = 3, MARS = 4,
+  JUPITER = 5, SATURN = 6, URANUS = 7, NEPTUNE = 8, PLUTO = 9,
+  NORTH_NODE = 10, CHIRON = 15,
 }
 
 export const PLANET_NAMES: Record<number, string> = {
-  [Planet.SUN]: 'Sun',
-  [Planet.MOON]: 'Moon',
-  [Planet.MERCURY]: 'Mercury',
-  [Planet.VENUS]: 'Venus',
-  [Planet.MARS]: 'Mars',
-  [Planet.JUPITER]: 'Jupiter',
-  [Planet.SATURN]: 'Saturn',
-  [Planet.URANUS]: 'Uranus',
-  [Planet.NEPTUNE]: 'Neptune',
-  [Planet.PLUTO]: 'Pluto',
-  [Planet.NORTH_NODE]: 'North Node',
-  [Planet.CHIRON]: 'Chiron',
+  [Planet.SUN]: 'Sun', [Planet.MOON]: 'Moon', [Planet.MERCURY]: 'Mercury',
+  [Planet.VENUS]: 'Venus', [Planet.MARS]: 'Mars', [Planet.JUPITER]: 'Jupiter',
+  [Planet.SATURN]: 'Saturn', [Planet.URANUS]: 'Uranus', [Planet.NEPTUNE]: 'Neptune',
+  [Planet.PLUTO]: 'Pluto', [Planet.NORTH_NODE]: 'North Node', [Planet.CHIRON]: 'Chiron',
 };
 
-/**
- * Calculate planetary positions for a given Julian day
- */
 export function calculatePlanets(jd: number): Record<string, PlanetPosition> {
-  if (!ephemerisReady) {
-    initEphemeris();
-  }
-
+  if (!ephemerisReady) initEphemeris();
   const planets: Record<string, PlanetPosition> = {};
   const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED;
 
-  for (let p = 0; p <= 11; p++) {
+  const planetIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15]; // Sun through Pluto + Mean Node + Chiron
+
+  for (const p of planetIds) {
     try {
-      const result = swisseph.swe_calc_ut(jd, p, flags);
-      if (result && result.length >= 6) {
+      const result = swisseph.swe_calc_ut(jd, p, flags) as any;
+      if (result && typeof result.longitude === 'number') {
         planets[PLANET_NAMES[p]] = {
-          longitude: result[0],
-          latitude: result[1],
-          distance: result[2],
-          speedLongitude: result[3],
-          speedLatitude: result[4],
-          speedDistance: result[5],
+          longitude: result.longitude,
+          latitude: result.latitude,
+          distance: result.distance,
+          speedLongitude: result.longitudeSpeed,
+          speedLatitude: result.latitudeSpeed,
+          speedDistance: result.distanceSpeed,
         };
       }
     } catch (err) {
-      console.warn(`Failed to calculate planet ${PLANET_NAMES[p]}:`, err);
+      console.warn(`Failed to calculate ${PLANET_NAMES[p]}:`, err);
     }
   }
-
   return planets;
 }
 
-/**
- * Calculate houses for a given Julian day and geographic location
- */
 export function calculateHouses(jd: number, lat: number, lng: number): { houses: HouseCusp[]; ascendant: number; midheaven: number } {
-  if (!ephemerisReady) {
-    initEphemeris();
-  }
-
+  if (!ephemerisReady) initEphemeris();
   try {
-    const result = swisseph.swe_houses_ex(jd, lat, lng, 'P', swisseph.SEFLG_SWIEPH);
-    
-    if (result) {
-      const housesArr: number[] = result.houses || result[0] || [];
-      const ascMC = result.ascMC || result[1] || [];
-      
-      const houses: HouseCusp[] = housesArr.map((longitude: number, i: number) => ({
-        cusp: i + 1,
-        longitude,
-      }));
-
+    // House system: 'P' = Placidus
+    const result = swisseph.swe_houses_ex(jd, swisseph.SEFLG_SWIEPH, lat, lng, 'P') as any;
+    if (result && result.house) {
+      const housesArr = result.house || [];
       return {
-        houses,
-        ascendant: Array.isArray(ascMC) ? ascMC[0] : (typeof ascMC === 'number' ? ascMC : 0),
-        midheaven: Array.isArray(ascMC) ? ascMC[1] : 0,
+        houses: housesArr.map((lon: number, i: number) => ({ cusp: i + 1, longitude: lon })),
+        ascendant: result.ascendant || 0,
+        midheaven: result.mc || 0,
       };
     }
   } catch (err) {
     console.warn('Failed to calculate houses:', err);
   }
-
   return { houses: [], ascendant: 0, midheaven: 0 };
 }
 
-/**
- * Convert date components to Julian day
- */
-export function dateToJulianDay(year: number, month: number, day: number, hours: number = 0): number {
+export function dateToJulianDay(year: number, month: number, day: number, hours = 0): number {
   return swisseph.swe_julday(year, month, day, hours, swisseph.SE_GREG_CAL);
 }
 
-/**
- * Get current Julian day (UTC now)
- */
 export function getCurrentJulianDay(): number {
   const now = new Date();
   return dateToJulianDay(
-    now.getUTCFullYear(),
-    now.getUTCMonth() + 1,
-    now.getUTCDate(),
+    now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate(),
     now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600
   );
 }
@@ -179,25 +125,20 @@ const ASPECT_ORBS: Record<AspectType, { angle: number; orb: number }> = {
   semisextile: { angle: 30, orb: 2 },
 };
 
-/**
- * Calculate aspects between two sets of planetary positions
- */
 export function calculateAspects(
   planets1: Record<string, PlanetPosition>,
   planets2?: Record<string, PlanetPosition>
 ): Aspect[] {
   const target = planets2 || planets1;
   const aspects: Aspect[] = [];
-  const planetNames = Object.keys(planets1);
+  const names = Object.keys(planets1);
 
-  for (let i = 0; i < planetNames.length; i++) {
-    for (let j = i + 1; j < planetNames.length; j++) {
-      const p1 = planetNames[i];
-      const p2 = planetNames[j];
-      const lon1 = planets1[p1].longitude;
-      const lon2 = target[p2].longitude;
-
-      let diff = Math.abs(lon1 - lon2) % 360;
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const p1 = names[i];
+      const p2 = names[j];
+      if (!planets1[p1] || !target[p2]) continue;
+      let diff = Math.abs(planets1[p1].longitude - target[p2].longitude) % 360;
       if (diff > 180) diff = 360 - diff;
 
       for (const [type, asp] of Object.entries(ASPECT_ORBS)) {
@@ -214,37 +155,21 @@ export function calculateAspects(
       }
     }
   }
-
   return aspects.sort((a, b) => a.orb - b.orb);
 }
 
-/**
- * Calculate a complete birth chart
- */
 export function calculateBirthChart(
-  birthDate: string,  // YYYY-MM-DD
-  birthTime: string,  // HH:mm
+  birthDate: string,
+  birthTime: string,
   lat: number,
   lng: number,
-  timezoneOffset: number // hours offset from UTC
+  timezoneOffset: number
 ): ChartData {
   const [y, m, d] = birthDate.split('-').map(Number);
   const [hh, mm] = birthTime.split(':').map(Number);
-  
-  // Convert to UTC by subtracting timezone offset
-  const localHours = hh + mm / 60;
-  const utcHours = localHours - timezoneOffset;
-  
+  const utcHours = hh + mm / 60 - timezoneOffset;
   const jd = dateToJulianDay(y, m, d, utcHours);
-  
   const planets = calculatePlanets(jd);
   const { houses, ascendant, midheaven } = calculateHouses(jd, lat, lng);
-  const aspects = calculateAspects(planets);
-
-  return {
-    planets,
-    houses,
-    ascendant,
-    midheaven,
-  };
+  return { planets, houses, ascendant, midheaven };
 }
