@@ -1,5 +1,4 @@
 import swisseph from 'swisseph';
-import path from 'path';
 import fs from 'fs';
 import { config } from '../config.js';
 
@@ -38,7 +37,7 @@ export interface ChartData {
 export enum Planet {
   SUN = 0, MOON = 1, MERCURY = 2, VENUS = 3, MARS = 4,
   JUPITER = 5, SATURN = 6, URANUS = 7, NEPTUNE = 8, PLUTO = 9,
-  NORTH_NODE = 10, CHIRON = 11,
+  NORTH_NODE = 10, CHIRON = 15,
 }
 
 export const PLANET_NAMES: Record<number, string> = {
@@ -53,13 +52,19 @@ export function calculatePlanets(jd: number): Record<string, PlanetPosition> {
   const planets: Record<string, PlanetPosition> = {};
   const flags = swisseph.SEFLG_SWIEPH | swisseph.SEFLG_SPEED;
 
-  for (let p = 0; p <= 11; p++) {
+  const planetIds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15]; // Sun through Pluto + Mean Node + Chiron
+
+  for (const p of planetIds) {
     try {
-      const result = swisseph.swe_calc_ut(jd, p, flags);
-      if (result && result.length >= 6) {
+      const result = swisseph.swe_calc_ut(jd, p, flags) as any;
+      if (result && typeof result.longitude === 'number') {
         planets[PLANET_NAMES[p]] = {
-          longitude: result[0], latitude: result[1], distance: result[2],
-          speedLongitude: result[3], speedLatitude: result[4], speedDistance: result[5],
+          longitude: result.longitude,
+          latitude: result.latitude,
+          distance: result.distance,
+          speedLongitude: result.longitudeSpeed,
+          speedLatitude: result.latitudeSpeed,
+          speedDistance: result.distanceSpeed,
         };
       }
     } catch (err) {
@@ -72,14 +77,14 @@ export function calculatePlanets(jd: number): Record<string, PlanetPosition> {
 export function calculateHouses(jd: number, lat: number, lng: number): { houses: HouseCusp[]; ascendant: number; midheaven: number } {
   if (!ephemerisReady) initEphemeris();
   try {
-    const result = swisseph.swe_houses_ex(jd, lat, lng, 'P', swisseph.SEFLG_SWIEPH);
-    if (result) {
-      const housesArr = result.houses || result[0] || [];
-      const ascMC = result.ascMC || result[1] || [];
+    // House system: 'P' = Placidus
+    const result = swisseph.swe_houses_ex(jd, swisseph.SEFLG_SWIEPH, lat, lng, 'P') as any;
+    if (result && result.house) {
+      const housesArr = result.house || [];
       return {
         houses: housesArr.map((lon: number, i: number) => ({ cusp: i + 1, longitude: lon })),
-        ascendant: Array.isArray(ascMC) ? ascMC[0] : 0,
-        midheaven: Array.isArray(ascMC) ? ascMC[1] : 0,
+        ascendant: result.ascendant || 0,
+        midheaven: result.mc || 0,
       };
     }
   } catch (err) {
@@ -120,21 +125,32 @@ const ASPECT_ORBS: Record<AspectType, { angle: number; orb: number }> = {
   semisextile: { angle: 30, orb: 2 },
 };
 
-export function calculateAspects(planets1: Record<string, PlanetPosition>, planets2?: Record<string, PlanetPosition>): Aspect[] {
+export function calculateAspects(
+  planets1: Record<string, PlanetPosition>,
+  planets2?: Record<string, PlanetPosition>
+): Aspect[] {
   const target = planets2 || planets1;
   const aspects: Aspect[] = [];
   const names = Object.keys(planets1);
 
   for (let i = 0; i < names.length; i++) {
     for (let j = i + 1; j < names.length; j++) {
-      const p1 = names[i], p2 = names[j];
+      const p1 = names[i];
+      const p2 = names[j];
+      if (!planets1[p1] || !target[p2]) continue;
       let diff = Math.abs(planets1[p1].longitude - target[p2].longitude) % 360;
       if (diff > 180) diff = 360 - diff;
 
       for (const [type, asp] of Object.entries(ASPECT_ORBS)) {
         const angleDiff = Math.abs(diff - asp.angle);
         if (angleDiff <= asp.orb) {
-          aspects.push({ planet1: p1, planet2: p2, type: type as AspectType, orb: angleDiff, exact: asp.angle - diff });
+          aspects.push({
+            planet1: p1,
+            planet2: p2,
+            type: type as AspectType,
+            orb: angleDiff,
+            exact: asp.angle - diff,
+          });
         }
       }
     }
@@ -142,7 +158,13 @@ export function calculateAspects(planets1: Record<string, PlanetPosition>, plane
   return aspects.sort((a, b) => a.orb - b.orb);
 }
 
-export function calculateBirthChart(birthDate: string, birthTime: string, lat: number, lng: number, timezoneOffset: number): ChartData {
+export function calculateBirthChart(
+  birthDate: string,
+  birthTime: string,
+  lat: number,
+  lng: number,
+  timezoneOffset: number
+): ChartData {
   const [y, m, d] = birthDate.split('-').map(Number);
   const [hh, mm] = birthTime.split(':').map(Number);
   const utcHours = hh + mm / 60 - timezoneOffset;
