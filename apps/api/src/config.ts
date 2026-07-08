@@ -15,6 +15,12 @@ export const config = {
   stripe: {
     secretKey: process.env.STRIPE_SECRET_KEY || '',
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    priceIds: {
+      premiumMonthly: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || '',
+      premiumYearly: process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || '',
+      birthChartReport: process.env.STRIPE_BIRTH_CHART_REPORT_PRICE_ID || '',
+      compatibilityReport: process.env.STRIPE_COMPATIBILITY_REPORT_PRICE_ID || '',
+    },
   },
   dailyHoroscopeTime: process.env.DAILY_HOROSCOPE_TIME || '08:00',
 };
