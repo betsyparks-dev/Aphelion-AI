@@ -151,7 +151,7 @@ function Home() {
             </p>
             <div className="mt-10 flex items-center justify-center gap-4">
               <a
-                href="/signup"
+                href="/generate"
                 className="rounded-full bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-200"
               >
                 Start your free business plan
@@ -481,7 +481,7 @@ function Home() {
           </p>
           <div className="mt-10">
             <a
-              href="/signup"
+              href="/generate"
               className="inline-flex items-center rounded-full bg-white px-8 py-3.5 text-base font-semibold text-indigo-700 shadow-sm transition-all hover:bg-indigo-50 hover:shadow-lg"
             >
               Describe your idea — it's free
