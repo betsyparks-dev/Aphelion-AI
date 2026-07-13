@@ -21,6 +21,13 @@ export const config = {
       birthChartReport: process.env.STRIPE_BIRTH_CHART_REPORT_PRICE_ID || '',
       compatibilityReport: process.env.STRIPE_COMPATIBILITY_REPORT_PRICE_ID || '',
     },
+    // Live payment links from Stripe Dashboard (direct checkout links)
+    paymentLinks: {
+      birthChartReport: 'https://buy.stripe.com/aFaeVdcS1fNe8PUaeu1gs07',
+      compatibilityReport: 'https://buy.stripe.com/bJefZhg4d58A8PU9aq1gs08',
+    },
   },
   dailyHoroscopeTime: process.env.DAILY_HOROSCOPE_TIME || '08:00',
+  // Website URL for CORS and redirects
+  websiteUrl: process.env.WEBSITE_URL || 'http://localhost:3000',
 };

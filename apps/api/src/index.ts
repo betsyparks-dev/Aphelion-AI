@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import fastifyStatic from '@fastify/static';
 import { config } from './config.js';
 import { runMigrations } from './db/schema.js';
 import { initEphemeris } from './services/ephemeris.js';
@@ -11,6 +12,10 @@ import { registerTransitRoutes } from './routes/transits.js';
 import { registerSubscriptionRoutes } from './routes/subscriptions.js';
 import cron from 'node-cron';
 import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Ensure data directory exists
 if (!fs.existsSync(config.dataDir)) {
@@ -29,13 +34,36 @@ await app.register(cors, {
 // Health check
 app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
-// Register routes
+// Register API routes
 registerAuthRoutes(app);
 registerChartRoutes(app);
 registerHoroscopeRoutes(app);
 registerCompatibilityRoutes(app);
 registerTransitRoutes(app);
 registerSubscriptionRoutes(app);
+
+// Serve website static files if dist directory exists
+const siteDistPath = path.resolve(__dirname, '../../../site/dist');
+if (fs.existsSync(siteDistPath)) {
+  await app.register(fastifyStatic, {
+    root: siteDistPath,
+    prefix: '/',
+    wildcard: false,
+  });
+
+  // Fallback to index.html for SPA routing
+  app.setNotFoundHandler((request, reply) => {
+    if (!request.url.startsWith('/api/')) {
+      const indexPath = path.join(siteDistPath, 'index.html');
+      if (fs.existsSync(indexPath)) {
+        return reply.type('text/html').send(fs.readFileSync(indexPath));
+      }
+    }
+    return reply.status(404).send({ error: 'Not found' });
+  });
+} else {
+  console.log('Website static files not found at', siteDistPath, '- API-only mode');
+}
 
 // Initialize
 try {
@@ -64,6 +92,9 @@ cron.schedule(`${minute} ${hour} * * *`, () => {
 try {
   await app.listen({ port: config.port, host: config.host });
   console.log(`Astral Lens API running on http://${config.host}:${config.port}`);
+  if (fs.existsSync(siteDistPath)) {
+    console.log(`Website served from ${siteDistPath}`);
+  }
 } catch (err) {
   app.log.error(err);
   process.exit(1);
