@@ -408,7 +408,9 @@ function Home() {
                 ))}
               </ul>
               <a
-                            href="/signup"
+                            href="https://buy.stripe.com/7sY6oHf090SkgimfyO1gs05"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-500 hover:shadow-md"
                           >
                             Start free trial
@@ -456,7 +458,9 @@ function Home() {
                 ))}
               </ul>
               <a
-                            href="/signup"
+                            href="https://buy.stripe.com/dRm8wPg4dcB25DIcmC1gs06"
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="mt-8 inline-flex w-full items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-gray-800"
                           >
                             Subscribe to Pro

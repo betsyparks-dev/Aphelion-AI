@@ -1,16 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { generateBusiness, saveBusiness, type BusinessOutput } from "~/lib/ai";
+import { generateBusiness, saveBusiness, checkGenerationLimit, type BusinessOutput } from "~/lib/ai";
 import { getCurrentUser } from "~/lib/auth";
 
 const runGeneration = createServerFn({ method: "POST" })
   .validator((data: { idea: string; focusArea?: string }) => data)
   .handler(async ({ data }) => {
+    // Check user is logged in
+    const user = await getCurrentUser({} as any);
+    if (!user.user) {
+      return { error: "Please sign in to generate a business plan." };
+    }
+
+    // Check generation limit
+    const limitError = await checkGenerationLimit(user.user.id, user.user.subscription_tier);
+    if (limitError) {
+      return { error: limitError };
+    }
+
     const result = await generateBusiness(data.idea, data.focusArea);
     const title = result.brand_identity.name_suggestions[0] || "My Business";
     // Try saving to DB (gracefully handles missing DB)
-    const user = await getCurrentUser({} as any);
     let saved = null;
     if (user.user) {
       saved = await saveBusiness(user.user.id, title, data.idea, result);
@@ -43,7 +54,11 @@ function GeneratePage() {
     setResult(null);
     try {
       const res = await runGeneration({ data: { idea: idea.trim(), focusArea: focusArea || undefined } });
-      setResult(res.output);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+      setResult(res.output!);
       setBusinessTitle(res.title);
     } catch (err: any) {
       setError(err.message || "Generation failed. Please try again.");

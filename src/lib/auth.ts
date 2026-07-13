@@ -41,10 +41,10 @@ export function createToken(user: User): string {
 }
 
 /** Verify and decode a JWT */
-export function verifyToken(token: string): { id: string; email: string; name: string } | null {
+export function verifyToken(token: string): { id: string; email: string; name: string; subscription_tier: string } | null {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as any;
-    return { id: decoded.id, email: decoded.email, name: decoded.name };
+    return { id: decoded.id, email: decoded.email, name: decoded.name, subscription_tier: decoded.sub || "free" };
   } catch {
     return null;
   }
