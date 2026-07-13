@@ -8,6 +8,7 @@ import { registerChartRoutes } from './routes/chart.js';
 import { registerHoroscopeRoutes } from './routes/horoscope.js';
 import { registerCompatibilityRoutes } from './routes/compatibility.js';
 import { registerTransitRoutes } from './routes/transits.js';
+import { registerSubscriptionRoutes } from './routes/subscriptions.js';
 import cron from 'node-cron';
 import fs from 'fs';
 
@@ -34,6 +35,7 @@ registerChartRoutes(app);
 registerHoroscopeRoutes(app);
 registerCompatibilityRoutes(app);
 registerTransitRoutes(app);
+registerSubscriptionRoutes(app);
 
 // Initialize
 try {
