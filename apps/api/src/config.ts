@@ -18,8 +18,8 @@ export const config = {
     priceIds: {
       premiumMonthly: process.env.STRIPE_PREMIUM_MONTHLY_PRICE_ID || '',
       premiumYearly: process.env.STRIPE_PREMIUM_YEARLY_PRICE_ID || '',
-      birthChartReport: process.env.STRIPE_BIRTH_CHART_REPORT_PRICE_ID || '',
-      compatibilityReport: process.env.STRIPE_COMPATIBILITY_REPORT_PRICE_ID || '',
+      birthChartReport: process.env.STRIPE_BIRTH_CHART_REPORT_PRICE_ID || 'price_1TspT1DyIytljhWHJmTKrFqR',
+      compatibilityReport: process.env.STRIPE_COMPATIBILITY_REPORT_PRICE_ID || 'price_1TspT2DyIytljhWH9DNycl28',
     },
   },
   dailyHoroscopeTime: process.env.DAILY_HOROSCOPE_TIME || '08:00',
