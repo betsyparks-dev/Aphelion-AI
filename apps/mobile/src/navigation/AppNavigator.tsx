@@ -10,20 +10,24 @@ import TransitCalendarScreen from '../screens/TransitCalendarScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 export type MainTabParamList = {
-  Horoscope: undefined;
-  'Birth Chart': undefined;
-  Compatibility: undefined;
-  Transits: undefined;
-  Settings: undefined;
+  Horoscope: { chartId?: string } | undefined;
+  'Birth Chart': { chartId?: string } | undefined;
+  Compatibility: { chartId?: string } | undefined;
+  Transits: { chartId?: string } | undefined;
+  Settings: { chartId?: string } | undefined;
 };
 
 export type RootStackParamList = {
-  MainTabs: undefined;
+  MainTabs: { chartId?: string } | undefined;
   Onboarding: undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+interface AppNavigatorProps {
+  screenProps?: { chartId?: string | null };
+}
 
 function MainTabs() {
   return (
@@ -68,19 +72,43 @@ function MainTabs() {
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Horoscope" component={DailyHoroscopeScreen} />
-      <Tab.Screen name="Birth Chart" component={BirthChartScreen} />
-      <Tab.Screen name="Compatibility" component={CompatibilityScreen} />
-      <Tab.Screen name="Transits" component={TransitCalendarScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      <Tab.Screen
+        name="Horoscope"
+        component={DailyHoroscopeScreen}
+        initialParams={{ chartId }}
+      />
+      <Tab.Screen
+        name="Birth Chart"
+        component={BirthChartScreen}
+        initialParams={{ chartId }}
+      />
+      <Tab.Screen
+        name="Compatibility"
+        component={CompatibilityScreen}
+        initialParams={{ chartId }}
+      />
+      <Tab.Screen
+        name="Transits"
+        component={TransitCalendarScreen}
+        initialParams={{ chartId }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        initialParams={{ chartId }}
+      />
     </Tab.Navigator>
   );
 }
 
-export default function AppNavigator() {
+export default function AppNavigator({ screenProps }: AppNavigatorProps) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={MainTabs} />
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        initialParams={{ chartId: screenProps?.chartId }}
+      />
     </Stack.Navigator>
   );
 }

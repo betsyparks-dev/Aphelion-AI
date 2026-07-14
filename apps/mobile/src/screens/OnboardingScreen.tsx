@@ -8,13 +8,21 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '../theme';
-import { OnboardingStep, BirthChart } from '../types';
+import { OnboardingStep } from '../types';
 
 interface OnboardingScreenProps {
-  onComplete: (chart: BirthChart) => void;
+  onComplete: (chart: {
+    name: string;
+    dateOfBirth: string;
+    timeOfBirth: string;
+    placeOfBirth: string;
+    latitude: number;
+    longitude: number;
+  }) => void;
 }
 
 export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) {
@@ -23,8 +31,46 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
   const [dateOfBirth, setDateOfBirth] = useState('');
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleNext = () => {
+  // Simple city coordinate lookup for common cities
+  const getCityCoords = (place: string): { lat: number; lng: number } => {
+    const lower = place.toLowerCase();
+    const coords: Record<string, { lat: number; lng: number }> = {
+      'new york': { lat: 40.7128, lng: -74.006 },
+      'los angeles': { lat: 34.0522, lng: -118.2437 },
+      'london': { lat: 51.5074, lng: -0.1278 },
+      'paris': { lat: 48.8566, lng: 2.3522 },
+      'tokyo': { lat: 35.6762, lng: 139.6503 },
+      'sydney': { lat: -33.8688, lng: 151.2093 },
+      'berlin': { lat: 52.52, lng: 13.405 },
+      'mumbai': { lat: 19.076, lng: 72.8777 },
+      'beijing': { lat: 39.9042, lng: 116.4074 },
+      'moscow': { lat: 55.7558, lng: 37.6173 },
+      'toronto': { lat: 43.6532, lng: -79.3832 },
+      'chicago': { lat: 41.8781, lng: -87.6298 },
+      'san francisco': { lat: 37.7749, lng: -122.4194 },
+      'miami': { lat: 25.7617, lng: -80.1918 },
+      'seattle': { lat: 47.6062, lng: -122.3321 },
+      'delhi': { lat: 28.7041, lng: 77.1025 },
+      'são paulo': { lat: -23.5505, lng: -46.6333 },
+      'mexico city': { lat: 19.4326, lng: -99.1332 },
+      'cairo': { lat: 30.0444, lng: 31.2357 },
+      'dubai': { lat: 25.2048, lng: 55.2708 },
+      'singapore': { lat: 1.3521, lng: 103.8198 },
+      'hong kong': { lat: 22.3193, lng: 114.1694 },
+      'istanbul': { lat: 41.0082, lng: 28.9784 },
+      'rome': { lat: 41.9028, lng: 12.4964 },
+    };
+
+    for (const [city, { lat, lng }] of Object.entries(coords)) {
+      if (lower.includes(city)) return { lat, lng };
+    }
+    // Default to a neutral location (Greenwich)
+    return { lat: 51.4769, lng: 0 };
+  };
+
+  const handleNext = async () => {
     switch (step) {
       case 'welcome':
         setStep('birth-date');
@@ -46,17 +92,19 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
         }
         setStep('complete');
         break;
-      case 'complete':
+      case 'complete': {
+        setSubmitting(true);
+        const coords = getCityCoords(placeOfBirth);
         onComplete({
           name: name || 'Me',
           dateOfBirth,
-          timeOfBirth,
+          timeOfBirth: timeOfBirth || '12:00',
           placeOfBirth,
-          latitude: 0,
-          longitude: 0,
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        } as BirthChart);
+          latitude: coords.lat,
+          longitude: coords.lng,
+        });
         break;
+      }
     }
   };
 
@@ -139,25 +187,34 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
       case 'complete':
         return (
           <View style={styles.welcomeContainer}>
-            <Ionicons name="sparkles" size={60} color={colors.accent} />
-            <Text style={styles.welcomeTitle}>You're All Set!</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Your birth chart is being prepared. Get ready for personalized astrological insights!
-            </Text>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Name</Text>
-              <Text style={styles.summaryValue}>{name || 'Me'}</Text>
-              <Text style={styles.summaryLabel}>Birth Date</Text>
-              <Text style={styles.summaryValue}>{dateOfBirth}</Text>
-              {timeOfBirth ? (
-                <>
-                  <Text style={styles.summaryLabel}>Birth Time</Text>
-                  <Text style={styles.summaryValue}>{timeOfBirth}</Text>
-                </>
-              ) : null}
-              <Text style={styles.summaryLabel}>Birth Place</Text>
-              <Text style={styles.summaryValue}>{placeOfBirth}</Text>
-            </View>
+            {submitting ? (
+              <>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.welcomeSubtitle}>Calculating your birth chart...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={60} color={colors.accent} />
+                <Text style={styles.welcomeTitle}>You're All Set!</Text>
+                <Text style={styles.welcomeSubtitle}>
+                  Your birth chart is being prepared. Get ready for personalized astrological insights!
+                </Text>
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>Name</Text>
+                  <Text style={styles.summaryValue}>{name || 'Me'}</Text>
+                  <Text style={styles.summaryLabel}>Birth Date</Text>
+                  <Text style={styles.summaryValue}>{dateOfBirth}</Text>
+                  {timeOfBirth ? (
+                    <>
+                      <Text style={styles.summaryLabel}>Birth Time</Text>
+                      <Text style={styles.summaryValue}>{timeOfBirth}</Text>
+                    </>
+                  ) : null}
+                  <Text style={styles.summaryLabel}>Birth Place</Text>
+                  <Text style={styles.summaryValue}>{placeOfBirth}</Text>
+                </View>
+              </>
+            )}
           </View>
         );
     }
@@ -184,13 +241,14 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
           </TouchableOpacity>
         )}
         <TouchableOpacity
-          style={[styles.nextButton, canGoBack ? { flex: 1, marginLeft: spacing.md } : { flex: 1 }]}
+          style={[styles.nextButton, submitting && { opacity: 0.7 }, canGoBack ? { flex: 1, marginLeft: spacing.md } : { flex: 1 }]}
           onPress={handleNext}
+          disabled={submitting}
         >
           <Text style={styles.nextButtonText}>
-            {step === 'complete' ? 'Begin Your Journey' : 'Continue'}
+            {submitting ? 'Creating Chart...' : step === 'complete' ? 'Begin Your Journey' : 'Continue'}
           </Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
+          {!submitting && <Ionicons name="arrow-forward" size={20} color="#fff" />}
         </TouchableOpacity>
       </View>
     </SafeAreaView>
